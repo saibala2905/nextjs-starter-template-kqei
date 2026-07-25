@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import {
   LayoutDashboard,
   Bot,
@@ -10,6 +12,11 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
+
+interface SidebarProps {
+  collapsed: boolean;
+  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+}
 
 const menuItems = [
   {
@@ -44,33 +51,69 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({
+  collapsed,
+}: SidebarProps) {
+  const pathname = usePathname();
+
   return (
-    <aside className="w-64 h-screen bg-slate-900 text-white flex flex-col">
-      <div className="p-6 border-b border-slate-700">
-        <div className="flex items-center gap-3">
-          <Shield className="w-8 h-8 text-blue-400" />
-          <div>
-            <h1 className="text-lg font-bold">KSP AI</h1>
-            <p className="text-xs text-slate-400">
-              Intelligence Platform
-            </p>
-          </div>
+    <aside
+      className={`bg-slate-900 text-white flex flex-col transition-all duration-300 ${
+        collapsed ? "w-20" : "w-64"
+      }`}
+    >
+      {/* Logo */}
+
+      <div className="border-b border-slate-700 p-6">
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "gap-3"
+          }`}
+        >
+          <Shield className="h-8 w-8 text-blue-400" />
+
+          {!collapsed && (
+            <div>
+              <h1 className="text-lg font-bold">
+                KSP AI
+              </h1>
+
+              <p className="text-xs text-slate-400">
+                Intelligence Platform
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
+      {/* Menu */}
+
+      <nav className="flex-1 p-3">
+
         {menuItems.map((item) => {
+
           const Icon = item.icon;
+
+          const active = pathname === item.href;
 
           return (
             <Link
               key={item.title}
               href={item.href}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 mb-2 hover:bg-slate-800 transition"
+              className={`mb-2 flex items-center rounded-lg px-4 py-3 transition-all
+              ${
+                active
+                  ? "bg-blue-600 text-white"
+                  : "hover:bg-slate-800 text-slate-200"
+              }
+              ${collapsed ? "justify-center" : "gap-3"}
+              `}
             >
-              <Icon className="w-5 h-5" />
-              <span>{item.title}</span>
+              <Icon className="h-5 w-5" />
+
+              {!collapsed && (
+                <span>{item.title}</span>
+              )}
             </Link>
           );
         })}

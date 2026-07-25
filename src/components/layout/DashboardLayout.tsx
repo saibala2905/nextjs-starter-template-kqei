@@ -1,5 +1,9 @@
-import { ReactNode } from "react";
+"use client";
+
+import { ReactNode, useState } from "react";
+
 import Sidebar from "./Sidebar";
+import Header from "./Header";
 
 interface Props {
   children: ReactNode;
@@ -8,13 +12,29 @@ interface Props {
 export default function DashboardLayout({
   children,
 }: Props) {
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar />
+  const [collapsed, setCollapsed] = useState(false);
 
-      <main className="flex-1 bg-slate-100 p-8">
-        {children}
-      </main>
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-100">
+      {/* Sidebar */}
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <Header
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+        />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
