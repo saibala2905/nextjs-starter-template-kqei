@@ -1,0 +1,58 @@
+[
+  {
+    "id": "REL-001",
+    "source": "PER-001",
+    "target": "VEH-001",
+    "type": "Owns",
+    "confidence": 94
+  },
+  {
+    "id": "REL-002",
+    "source": "PER-001",
+    "target": "PER-002",
+    "type": "Associate",
+    "confidence": 91
+  },
+  {
+    "id": "REL-003",
+    "source": "PER-001",
+    "target": "PHN-001",
+    "type": "Uses",
+    "confidence": 97
+  },
+  {
+    "id": "REL-004",
+    "source": "VEH-001",
+    "target": "LOC-001",
+    "type": "Seen At",
+    "confidence": 88
+  },
+  {
+    "id": "REL-005",
+    "source": "PER-001",
+    "target": "CASE-001",
+    "type": "Accused",
+    "confidence": 99
+  },
+  {
+    "id": "REL-006",
+    "source": "CASE-001",
+    "target": "EVD-001",
+    "type": "Contains",
+    "confidence": 100
+  },
+  {
+    "id": "REL-007",
+    "source": "PER-002",
+    "target": "ORG-001",
+    "type": "Works At",
+    "confidence": 86
+  },
+  {
+    "id": "REL-008",
+    "source": "PER-001",
+    "target": "BNK-001",
+    "type": "Operates",
+    "confidence": 72
+  }
+]

@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
 import "./globals.css";
+import "reactflow/dist/style.css";
+
+import AssistantDock from "@/components/assistant/AssistantDock";
+import AssistantLauncher from "@/components/assistant/AssistantLauncher";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -19,7 +24,8 @@ export const metadata: Metadata = {
     default: "KSP AI Platform",
     template: "%s | KSP AI Platform",
   },
-  description: "Intelligent AI Platform for Karnataka State Police",
+  description:
+    "Intelligent AI Platform for Karnataka State Police",
 };
 
 export default function RootLayout({
@@ -34,7 +40,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased">
+
         {children}
+
+        {/* Global AI Assistant */}
+        <AssistantLauncher />
+        <AssistantDock />
+
       </body>
     </html>
   );

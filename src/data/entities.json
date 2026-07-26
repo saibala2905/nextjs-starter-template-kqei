@@ -1,0 +1,130 @@
+[
+  {
+    "id": "PER-001",
+    "type": "Person",
+    "label": "Ramesh Kumar",
+    "description": "Primary suspect in vehicle theft investigation",
+    "risk": 88,
+    "confidence": 94,
+    "tags": ["Repeat Offender", "Vehicle Theft"],
+    "properties": {
+      "Age": 34,
+      "Occupation": "Driver",
+      "District": "Bengaluru Urban"
+    }
+  },
+  {
+    "id": "PER-002",
+    "type": "Person",
+    "label": "Suresh B",
+    "description": "Known associate",
+    "risk": 71,
+    "confidence": 87,
+    "tags": ["Associate"],
+    "properties": {
+      "Age": 29,
+      "Occupation": "Mechanic",
+      "District": "Tumakuru"
+    }
+  },
+  {
+    "id": "VEH-001",
+    "type": "Vehicle",
+    "label": "KA03MK1234",
+    "description": "White Maruti Swift",
+    "risk": 60,
+    "confidence": 96,
+    "tags": ["Vehicle"],
+    "properties": {
+      "Colour": "White",
+      "Model": "Swift",
+      "Registration": "KA03MK1234"
+    }
+  },
+  {
+    "id": "PHN-001",
+    "type": "Phone",
+    "label": "+91 9876543210",
+    "description": "Recovered during arrest",
+    "risk": 74,
+    "confidence": 91,
+    "tags": ["Communication"],
+    "properties": {
+      "IMEI": "356789012345678",
+      "Provider": "Airtel"
+    }
+  },
+  {
+    "id": "LOC-001",
+    "type": "Location",
+    "label": "Majestic Bus Stand",
+    "description": "Frequently visited location",
+    "risk": 52,
+    "confidence": 89,
+    "tags": ["Hotspot"],
+    "properties": {
+      "District": "Bengaluru Urban"
+    }
+  },
+  {
+    "id": "CASE-001",
+    "type": "Case",
+    "label": "Vehicle Theft Case",
+    "description": "FIR No. 104/2026",
+    "risk": 90,
+    "confidence": 98,
+    "tags": ["Open"],
+    "properties": {
+      "Crime": "Vehicle Theft",
+      "Status": "Under Investigation"
+    }
+  },
+  {
+    "id": "ORG-001",
+    "type": "Organization",
+    "label": "XYZ Auto Garage",
+    "description": "Vehicle dismantling workshop",
+    "risk": 66,
+    "confidence": 81,
+    "tags": ["Workshop"],
+    "properties": {
+      "District": "Bengaluru Rural"
+    }
+  },
+  {
+    "id": "EVD-001",
+    "type": "Evidence",
+    "label": "CCTV Footage",
+    "description": "Captured suspect vehicle",
+    "risk": 0,
+    "confidence": 100,
+    "tags": ["Evidence"],
+    "properties": {
+      "CapturedAt": "2026-07-21 22:45"
+    }
+  },
+  {
+    "id": "EVT-001",
+    "type": "Event",
+    "label": "Vehicle Theft Incident",
+    "description": "Vehicle stolen near market",
+    "risk": 0,
+    "confidence": 100,
+    "tags": ["Incident"],
+    "properties": {
+      "Date": "2026-07-21"
+    }
+  },
+  {
+    "id": "BNK-001",
+    "type": "Bank Account",
+    "label": "Axis Bank",
+    "description": "Financial transactions under review",
+    "risk": 48,
+    "confidence": 78,
+    "tags": ["Financial"],
+    "properties": {
+      "Branch": "Rajajinagar"
+    }
+  }
+]
