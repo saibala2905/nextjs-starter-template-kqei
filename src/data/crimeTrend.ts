@@ -1,0 +1,51 @@
+export const crimeTrendData = [
+  {
+    day: "Mon",
+    theft: 42,
+    cyber: 18,
+    assault: 27,
+    narcotics: 12,
+  },
+  {
+    day: "Tue",
+    theft: 38,
+    cyber: 20,
+    assault: 31,
+    narcotics: 14,
+  },
+  {
+    day: "Wed",
+    theft: 45,
+    cyber: 24,
+    assault: 29,
+    narcotics: 16,
+  },
+  {
+    day: "Thu",
+    theft: 48,
+    cyber: 21,
+    assault: 26,
+    narcotics: 13,
+  },
+  {
+    day: "Fri",
+    theft: 56,
+    cyber: 28,
+    assault: 33,
+    narcotics: 18,
+  },
+  {
+    day: "Sat",
+    theft: 61,
+    cyber: 34,
+    assault: 39,
+    narcotics: 22,
+  },
+  {
+    day: "Sun",
+    theft: 52,
+    cyber: 30,
+    assault: 35,
+    narcotics: 17,
+  },
+];
