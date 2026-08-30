@@ -139,7 +139,7 @@ export default function LeafletMap({
       : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
+    <div ref={containerRef} className="relative z-0 isolate h-full w-full overflow-hidden">
       <MapContainer
         center={flyToCenter || KARNATAKA_CENTER}
         zoom={zoomLevel}

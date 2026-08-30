@@ -13,3 +13,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Ensure Leaflet stays strictly within its local stacking context below all modals & overlays */
+.leaflet-container {
+  z-index: 0 !important;
+  isolation: isolate;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 20 !important;
+}
+
+.leaflet-pane {
+  z-index: 10 !important;
+}

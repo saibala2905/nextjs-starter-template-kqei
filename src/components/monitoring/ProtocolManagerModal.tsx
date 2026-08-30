@@ -117,7 +117,7 @@ export default function ProtocolManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-200">
       <div className="w-full max-w-xl overflow-hidden rounded-3xl border border-white/20 bg-slate-950/85 text-slate-100 shadow-[0_16px_48px_0_rgba(0,0,0,0.7)] backdrop-blur-3xl">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 p-5 bg-white/[0.03]">
