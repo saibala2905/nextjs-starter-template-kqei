@@ -54,6 +54,30 @@ export default function DashboardPage() {
     }));
   };
 
+  // Support URL query ?view=hud or ?hud=true
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("view") === "hud" || params.get("hud") === "true") {
+        setViewMode("hud");
+      }
+    }
+  }, []);
+
+  // Listen to global HUD toggle event
+  useEffect(() => {
+    const handleToggleEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ mode?: "grid" | "hud" }>;
+      if (customEvent.detail?.mode) {
+        setViewMode(customEvent.detail.mode);
+      } else {
+        setViewMode((prev) => (prev === "hud" ? "grid" : "hud"));
+      }
+    };
+    window.addEventListener("ksp:toggle-hud", handleToggleEvent);
+    return () => window.removeEventListener("ksp:toggle-hud", handleToggleEvent);
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);

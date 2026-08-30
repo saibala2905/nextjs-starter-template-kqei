@@ -274,7 +274,7 @@ export default function TacticalMapHUD({
   const topCategories = overview?.topCrimeCategories || [];
 
   return (
-    <div className={`fixed inset-0 z-50 h-screen w-screen overflow-hidden font-sans select-none ${isLight ? "bg-slate-100 text-slate-900" : "bg-slate-950 text-slate-100"}`}>
+    <div className={`fixed inset-0 z-[99998] h-screen w-screen overflow-hidden font-sans select-none ${isLight ? "bg-slate-100 text-slate-900" : "bg-slate-950 text-slate-100"}`}>
       {/* ============================================================== */}
       {/* 1. Fullscreen Map Backdrop with Sentinel Geo-Fences            */}
       {/* ============================================================== */}
