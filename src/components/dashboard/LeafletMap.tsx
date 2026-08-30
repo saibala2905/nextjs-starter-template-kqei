@@ -1,18 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, ZoomControl } from "react-leaflet";
+import { useEffect, useState, useRef } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Circle,
+  Tooltip,
+  ZoomControl,
+  useMap,
+} from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import type { GeoCasePoint } from "@/types/apiTypes";
 
 interface LeafletMapProps {
   cases?: GeoCasePoint[];
+  onSelectCase?: (c: GeoCasePoint) => void;
+  selectedCaseId?: number | null;
+  flyToCenter?: [number, number] | null;
+  zoomLevel?: number;
+  tileTheme?: "light" | "dark" | "satellite";
+  showHotspotRings?: boolean;
 }
 
 const KARNATAKA_CENTER: LatLngExpression = [15.3173, 75.7139];
 
-export default function LeafletMap({ cases = [] }: LeafletMapProps) {
+// Component to handle smooth flyTo panning
+function MapFlyController({
+  center,
+  zoom,
+}: {
+  center?: [number, number] | null;
+  zoom?: number;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && center[0] && center[1]) {
+      map.flyTo(center, zoom || 11, {
+        duration: 1.5,
+      });
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
+export default function LeafletMap({
+  cases = [],
+  onSelectCase,
+  selectedCaseId,
+  flyToCenter,
+  zoomLevel = 7,
+  tileTheme = "dark",
+  showHotspotRings = true,
+}: LeafletMapProps) {
   const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -20,116 +62,172 @@ export default function LeafletMap({ cases = [] }: LeafletMapProps) {
 
   if (!mounted) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-100 text-slate-400">
-        <span className="text-sm font-medium">Initializing Karnataka GIS Canvas...</span>
+      <div className="flex h-full w-full items-center justify-center bg-slate-950 text-slate-400">
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+          <span className="text-xs font-mono">INITIALIZING TACTICAL GIS MATRIX...</span>
+        </div>
       </div>
     );
   }
 
   const getMarkerColor = (crimeName: string, statusId: number) => {
     if (statusId === 9903) return "#10b981"; // Closed / Green
-    if (statusId === 9902) return "#3b82f6"; // Charge sheeted / Blue
+    if (statusId === 9902) return "#38bdf8"; // Charge sheeted / Light Blue
     const lower = (crimeName || "").toLowerCase();
-    if (lower.includes("murder") || lower.includes("pocso") || lower.includes("rape") || lower.includes("dacoity")) {
+    if (
+      lower.includes("murder") ||
+      lower.includes("pocso") ||
+      lower.includes("rape") ||
+      lower.includes("dacoity")
+    ) {
       return "#ef4444"; // Heinous / Red
     }
-    if (lower.includes("theft") || lower.includes("burglary") || lower.includes("robbery")) {
+    if (
+      lower.includes("theft") ||
+      lower.includes("burglary") ||
+      lower.includes("robbery") ||
+      lower.includes("hurt")
+    ) {
       return "#f59e0b"; // Property / Amber
     }
-    if (lower.includes("cyber")) {
-      return "#8b5cf6"; // Cyber / Purple
+    if (lower.includes("cyber") || lower.includes("special")) {
+      return "#a855f7"; // Cyber / Purple
     }
-    return "#64748b";
+    return "#3b82f6";
   };
 
+  const tileUrl =
+    tileTheme === "dark"
+      ? "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+      : tileTheme === "satellite"
+      ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+
   return (
-    <div className="relative h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
       <MapContainer
-        center={KARNATAKA_CENTER}
-        zoom={7}
+        center={flyToCenter || KARNATAKA_CENTER}
+        zoom={zoomLevel}
         scrollWheelZoom={true}
         className="h-full w-full"
         zoomControl={false}
       >
+        <MapFlyController center={flyToCenter} zoom={zoomLevel} />
         <ZoomControl position="bottomright" />
+
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | KSP GIS'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; ESRI &copy; OpenStreetMap | KSP GIS'
+          url={tileUrl}
         />
+        {tileTheme === "dark" && (
+          <TileLayer
+            attribution=""
+            url="https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          />
+        )}
+
+        {/* Dynamic Scan Radar Circle over Target Zone */}
+        {flyToCenter && flyToCenter[0] && flyToCenter[1] && (
+          <>
+            <Circle
+              center={flyToCenter}
+              radius={16000}
+              pathOptions={{
+                color: "#38bdf8",
+                fillColor: "#38bdf8",
+                fillOpacity: 0.15,
+                weight: 2,
+                dashArray: "6, 8",
+              }}
+            />
+            <Circle
+              center={flyToCenter}
+              radius={8000}
+              pathOptions={{
+                color: "#60a5fa",
+                fillColor: "#60a5fa",
+                fillOpacity: 0.25,
+                weight: 1.5,
+              }}
+            />
+          </>
+        )}
+
+        {/* Hotspot Radar Density Rings */}
+        {showHotspotRings && (
+          <>
+            <Circle
+              center={[12.9716, 77.5946]}
+              radius={22000}
+              pathOptions={{
+                color: "#ef4444",
+                fillColor: "#ef4444",
+                fillOpacity: 0.12,
+                weight: 1.5,
+                dashArray: "4, 6",
+              }}
+            />
+            <Circle
+              center={[15.3647, 75.124]}
+              radius={15000}
+              pathOptions={{
+                color: "#f59e0b",
+                fillColor: "#f59e0b",
+                fillOpacity: 0.12,
+                weight: 1.5,
+                dashArray: "4, 6",
+              }}
+            />
+            <Circle
+              center={[12.2958, 76.6394]}
+              radius={14000}
+              pathOptions={{
+                color: "#a855f7",
+                fillColor: "#a855f7",
+                fillOpacity: 0.12,
+                weight: 1.5,
+                dashArray: "4, 6",
+              }}
+            />
+          </>
+        )}
 
         {cases.map((c) => {
           if (!c.latitude || !c.longitude || isNaN(c.latitude) || isNaN(c.longitude)) return null;
           const color = getMarkerColor(c.crime, c.statusId);
+          const isSelected = selectedCaseId === c.caseId;
 
           return (
             <CircleMarker
               key={c.caseId}
               center={[c.latitude, c.longitude]}
-              radius={6}
+              radius={isSelected ? 12 : 7}
               pathOptions={{
-                color: color,
+                color: isSelected ? "#ffffff" : color,
                 fillColor: color,
-                fillOpacity: 0.75,
-                weight: 1.5,
+                fillOpacity: isSelected ? 1 : 0.85,
+                weight: isSelected ? 3.5 : 1.5,
+              }}
+              eventHandlers={{
+                click: () => {
+                  if (onSelectCase) {
+                    onSelectCase(c);
+                  }
+                },
               }}
             >
-              <Tooltip direction="top" offset={[0, -5]} opacity={0.95}>
-                <div className="text-xs font-semibold">
-                  <p className="text-slate-900">{c.crime}</p>
-                  <p className="text-slate-500 font-normal">{c.districtName || c.unitName}</p>
+              <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                <div className="text-xs font-semibold p-1">
+                  <p className="text-slate-900 font-bold">{c.crime}</p>
+                  <p className="text-slate-500 font-mono text-[10px]">{c.crimeNo || `Case #${c.caseId}`}</p>
+                  <p className="text-blue-600 text-[10px]">{c.districtName || c.unitName}</p>
                 </div>
               </Tooltip>
-
-              <Popup>
-                <div className="p-1 max-w-xs space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between border-b pb-1">
-                    <span className="font-bold text-blue-700">{c.crimeNo || `Case #${c.caseId}`}</span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
-                      {c.statusName}
-                    </span>
-                  </div>
-                  <p className="font-semibold text-slate-900">{c.crime}</p>
-                  <p className="text-slate-600">
-                    <strong>Jurisdiction:</strong> {c.unitName} ({c.districtName})
-                  </p>
-                  <p className="text-slate-600">
-                    <strong>Registered:</strong> {c.registeredDate}
-                  </p>
-                  {c.briefFacts && (
-                    <p className="text-slate-500 text-[11px] italic line-clamp-3 bg-slate-50 p-1.5 rounded">
-                      &quot;{c.briefFacts}&quot;
-                    </p>
-                  )}
-                </div>
-              </Popup>
             </CircleMarker>
           );
         })}
       </MapContainer>
-
-      {/* Floating Map Legend */}
-      <div className="absolute top-4 right-4 z-1000 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-md backdrop-blur text-xs space-y-1.5">
-        <p className="font-bold text-slate-900 mb-1 flex items-center justify-between">
-          <span>Incident Density</span>
-          <span className="text-[10px] font-normal text-slate-500">{cases.length} Points</span>
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500"></span>
-          <span className="text-slate-700">Heinous / Violent Crimes</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-          <span className="text-slate-700">Property / Theft</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-purple-500"></span>
-          <span className="text-slate-700">Cyber / Special Laws</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-          <span className="text-slate-700">Closed / Chargesheeted</span>
-        </div>
-      </div>
     </div>
   );
 }

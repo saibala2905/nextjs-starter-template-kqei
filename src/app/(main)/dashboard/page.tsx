@@ -6,6 +6,8 @@ import {
   BrainCircuit,
   MapPinned,
   ChartColumnIncreasing,
+  Crosshair,
+  Maximize2,
 } from "lucide-react";
 
 import HeroBanner from "@/components/dashboard/HeroBanner";
@@ -14,6 +16,7 @@ import SituationAssessment from "@/components/dashboard/SituationAssessment";
 import LiveAlertFeed from "@/components/dashboard/LiveAlertFeed";
 import CrimeMap from "@/components/dashboard/CrimeMap";
 import CrimeTrendAnalytics from "@/components/dashboard/CrimeTrendAnalytics";
+import TacticalMapHUD from "@/components/dashboard/TacticalMapHUD";
 import GlobalFilterBar, { FilterState } from "@/components/layout/GlobalFilterBar";
 import SectionHeader from "@/components/ui/SectionHeader";
 
@@ -25,6 +28,7 @@ import type {
 } from "@/types/apiTypes";
 
 export default function DashboardPage() {
+  const [viewMode, setViewMode] = useState<"grid" | "hud">("grid");
   const [overview, setOverview] = useState<DashboardOverviewResponse | null>(null);
   const [geoCases, setGeoCases] = useState<GeoCasePoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +93,7 @@ export default function DashboardPage() {
 
       const [kpiRes, geoRes] = await Promise.all([
         kspApi.getDashboardKPIs(params).catch(() => null),
-        kspApi.getGeoCases({ ...params, limit: 300 }).catch(() => []),
+        kspApi.getGeoCases({ ...params, limit: 250 }).catch(() => []),
       ]);
 
       if (kpiRes) {
@@ -110,8 +114,48 @@ export default function DashboardPage() {
     }
   };
 
+  // If in Tactical HUD Mode, render the immersive game-style overlay map
+  if (viewMode === "hud") {
+    return (
+      <TacticalMapHUD
+        overview={overview}
+        geoCases={geoCases}
+        kpis={filteredKPIs || overview?.kpis || null}
+        onExitHUD={() => setViewMode("grid")}
+      />
+    );
+  }
+
   return (
     <div className="space-y-8 pb-10">
+      {/* Top HUD Mode Switcher Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-4 text-white shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-400/30">
+            <Crosshair size={20} className="text-blue-300 animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-sm font-extrabold tracking-wide uppercase flex items-center gap-2">
+              <span>Tactical War Room &amp; Visual HUD Mode</span>
+              <span className="rounded-full bg-blue-500/30 px-2 py-0.5 text-[10px] font-bold text-blue-200 border border-blue-400/30">
+                Spider-Man Game UI Inspired
+              </span>
+            </h2>
+            <p className="text-xs text-blue-200/80 mt-0.5">
+              Switch to immersive full-screen map mode with floating glassmorphic analytics drawers and FIR mission cards
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setViewMode("hud")}
+          className="flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 px-4 py-2 text-xs font-black text-slate-950 transition shadow-lg cursor-pointer shrink-0"
+        >
+          <Maximize2 size={14} />
+          <span>Launch Tactical HUD Mode</span>
+        </button>
+      </div>
+
       {/* Global Filter Bar */}
       <GlobalFilterBar onFilterChange={handleFilterChange} />
 
@@ -188,7 +232,18 @@ export default function DashboardPage() {
         />
 
         {sections.intelligence && (
-          <CrimeMap cases={geoCases} loading={loading || refreshing} onRefresh={loadData} />
+          <div className="space-y-3">
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setViewMode("hud")}
+                className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition shadow-2xs cursor-pointer"
+              >
+                <Maximize2 size={13} />
+                <span>Open in Tactical HUD Fullscreen</span>
+              </button>
+            </div>
+            <CrimeMap cases={geoCases} loading={loading || refreshing} onRefresh={loadData} />
+          </div>
         )}
       </section>
 
