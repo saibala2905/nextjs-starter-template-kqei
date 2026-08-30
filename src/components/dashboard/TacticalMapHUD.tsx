@@ -771,7 +771,7 @@ export default function TacticalMapHUD({
       </div>
 
       {/* ============================================================== */}
-      {/* 5. Spider-Man Style Tactical FIR Pin Brief Card                 */}
+      {/* 5. Tactical FIR Pin Briefing Card                             */}
       {/* ============================================================== */}
       {selectedCase && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 w-full max-w-md animate-in fade-in zoom-in-95 duration-200">

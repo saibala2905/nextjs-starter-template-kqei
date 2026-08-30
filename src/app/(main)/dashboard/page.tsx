@@ -137,12 +137,12 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-sm font-extrabold tracking-wide uppercase flex items-center gap-2">
               <span>Tactical War Room &amp; Visual HUD Mode</span>
-              <span className="rounded-full bg-blue-500/30 px-2 py-0.5 text-[10px] font-bold text-blue-200 border border-blue-400/30">
-                Spider-Man Game UI Inspired
+              <span className="rounded-full bg-cyan-500/25 px-2.5 py-0.5 text-[10px] font-bold text-cyan-200 border border-cyan-400/30">
+                Interactive Command HUD
               </span>
             </h2>
             <p className="text-xs text-blue-200/80 mt-0.5">
-              Switch to immersive full-screen map mode with floating glassmorphic analytics drawers and FIR mission cards
+              Full-screen geospatial intelligence with floating glassmorphic analytics, real-time threat radar, and FIR inspection cards
             </p>
           </div>
         </div>
