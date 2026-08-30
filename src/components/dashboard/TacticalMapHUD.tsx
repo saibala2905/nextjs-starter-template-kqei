@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import {
   Shield,
-  BrainCircuit,
   TrendingUp,
   PieChart as PieIcon,
   ChevronLeft,
@@ -25,7 +24,11 @@ import {
   Crosshair,
   Radar,
   ListFilter,
-  Sparkles,
+  ShieldAlert,
+  Plus,
+  Play,
+  Pause,
+  BellRing,
 } from "lucide-react";
 import {
   AreaChart,
@@ -46,7 +49,12 @@ import type {
   DashboardKPISummary,
 } from "@/types/apiTypes";
 import { kspApi } from "@/services/kspApi";
+import {
+  MLMonitoringService,
+  SentinelProtocol,
+} from "@/services/mlMonitoringService";
 import CaseDetailModal from "@/components/cases/CaseDetailModal";
+import ProtocolManagerModal from "@/components/monitoring/ProtocolManagerModal";
 
 const LeafletMap = dynamic(() => import("@/components/dashboard/LeafletMap"), {
   ssr: false,
@@ -114,10 +122,14 @@ export default function TacticalMapHUD({
   const [liveCases, setLiveCases] = useState<GeoCasePoint[]>(initialGeoCases || []);
   const [scanning, setScanning] = useState(false);
 
+  // Sentinel Protocols
+  const [protocols, setProtocols] = useState<SentinelProtocol[]>([]);
+  const [showProtocolModal, setShowProtocolModal] = useState(false);
+
   // HUD Drawer state
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
-  const [leftTab, setLeftTab] = useState<"assessment" | "cases" | "alerts">("assessment");
+  const [leftTab, setLeftTab] = useState<"assessment" | "protocols" | "cases" | "alerts">("protocols");
   const [rightTab, setRightTab] = useState<"trends" | "classification">("trends");
 
   // Map Controls (defaults to dark, adapts to light and satellite)
@@ -133,7 +145,7 @@ export default function TacticalMapHUD({
 
   const isLight = tileTheme === "light";
 
-  // Self-heal & sync cases: update state whenever initialGeoCases arrives or fetch directly
+  // Self-heal & sync cases
   useEffect(() => {
     if (initialGeoCases && initialGeoCases.length > 0) {
       setLiveCases(initialGeoCases);
@@ -147,6 +159,13 @@ export default function TacticalMapHUD({
         .catch((err) => console.error("HUD geo-cases fetch error:", err));
     }
   }, [initialGeoCases]);
+
+  // Load and evaluate Sentinel Protocols against live data
+  useEffect(() => {
+    const stored = MLMonitoringService.getProtocols();
+    const evaluated = MLMonitoringService.evaluateProtocols(stored, liveCases);
+    setProtocols(evaluated);
+  }, [liveCases]);
 
   // District name normalizer for robust matching
   const matchDistrictName = useCallback((caseDistrict: string, targetDistrict: string) => {
@@ -195,7 +214,20 @@ export default function TacticalMapHUD({
     }
   };
 
-  // Quick select an individual FIR pin
+  // Fly to Protocol Zone
+  const handleFocusProtocol = (p: SentinelProtocol) => {
+    const firstDistrict = p.targetDistricts[0];
+    if (firstDistrict && firstDistrict !== "all" && DISTRICT_COORDINATES[firstDistrict]) {
+      handleDistrictChange(firstDistrict);
+    }
+  };
+
+  const handleToggleProtocol = (pId: string) => {
+    const updated = MLMonitoringService.toggleStatus(pId);
+    const evaluated = MLMonitoringService.evaluateProtocols(updated, liveCases);
+    setProtocols(evaluated);
+  };
+
   const handleFocusPin = (c: GeoCasePoint) => {
     setSelectedCase(c);
     if (c.latitude && c.longitude) {
@@ -226,6 +258,10 @@ export default function TacticalMapHUD({
     return counts;
   }, [liveCases, matchDistrictName]);
 
+  const breachedProtocols = useMemo(() => {
+    return protocols.filter((p) => p.status === "breached");
+  }, [protocols]);
+
   const trendData = overview?.crimeMovement?.map((m) => ({
     name: m.month,
     cases: m.totalCases,
@@ -240,11 +276,12 @@ export default function TacticalMapHUD({
   return (
     <div className={`fixed inset-0 z-50 h-screen w-screen overflow-hidden font-sans select-none ${isLight ? "bg-slate-100 text-slate-900" : "bg-slate-950 text-slate-100"}`}>
       {/* ============================================================== */}
-      {/* 1. Fullscreen Map Backdrop                                     */}
+      {/* 1. Fullscreen Map Backdrop with Sentinel Geo-Fences            */}
       {/* ============================================================== */}
       <div className="absolute inset-0 h-full w-full z-0">
         <LeafletMap
           cases={filteredCases}
+          protocols={protocols}
           tileTheme={tileTheme}
           showHotspotRings={showHotspotRings}
           flyToCenter={flyToCenter}
@@ -291,27 +328,29 @@ export default function TacticalMapHUD({
           }`}>
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
             </span>
             <span className={`text-[11px] font-black tracking-widest uppercase ${isLight ? "text-blue-700" : "text-cyan-300"}`}>
               WAR ROOM HUD
             </span>
           </div>
 
-          <div className="hidden lg:flex items-center gap-4 text-xs font-mono">
-            <span className={isLight ? "text-slate-600" : "text-slate-300"}>
-              TARGETS: <strong className={isLight ? "text-slate-900 font-bold" : "text-white font-bold"}>{filteredCases.length}</strong> / {kpis?.totalCases || liveCases.length}
-            </span>
-            <span className={isLight ? "text-slate-600" : "text-slate-300"}>
-              ACTIVE: <strong className="text-amber-500 font-bold">{kpis?.activeCases || 1034}</strong>
-            </span>
-            <span className={isLight ? "text-slate-600" : "text-slate-300"}>
-              CHARGESHEET: <strong className={isLight ? "text-blue-600 font-bold" : "text-cyan-400 font-bold"}>{kpis?.chargeSheetedCases || 295}</strong>
-            </span>
-            <span className={isLight ? "text-slate-600" : "text-slate-300"}>
-              ZONE: <strong className={isLight ? "text-blue-700 font-bold" : "text-blue-300 font-bold"}>{activeDistrict === "all" ? "Statewide" : activeDistrict}</strong>
-            </span>
-          </div>
+          {/* Sentinel Protocol Breach Ticker */}
+          {breachedProtocols.length > 0 ? (
+            <div className="flex items-center gap-2 rounded-xl bg-red-500/20 border border-red-500/50 px-3 py-1 text-xs font-bold text-red-400 animate-pulse">
+              <BellRing size={13} className="text-red-400" />
+              <span>{breachedProtocols.length} SENTINEL BREACH ACTIVE: {breachedProtocols[0].name}</span>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center gap-4 text-xs font-mono">
+              <span className={isLight ? "text-slate-600" : "text-slate-300"}>
+                TARGETS: <strong className={isLight ? "text-slate-900 font-bold" : "text-white font-bold"}>{filteredCases.length}</strong> / {kpis?.totalCases || liveCases.length}
+              </span>
+              <span className={isLight ? "text-slate-600" : "text-slate-300"}>
+                ACTIVE SENTINELS: <strong className="text-cyan-400 font-bold">{protocols.filter(p => p.status !== "paused").length} Rules</strong>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Tactical Lock-On Quick Button */}
@@ -382,7 +421,7 @@ export default function TacticalMapHUD({
       </header>
 
       {/* ============================================================== */}
-      {/* 3. Left Floating Glassmorphic Drawer ("Threat & Targets")      */}
+      {/* 3. Left Floating Glassmorphic Drawer ("Protocols & Targets")   */}
       {/* ============================================================== */}
       <div
         className={`absolute top-20 left-3 z-20 transition-all duration-300 ${
@@ -401,14 +440,14 @@ export default function TacticalMapHUD({
             }`}>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setLeftTab("assessment")}
+                  onClick={() => setLeftTab("protocols")}
                   className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
-                    leftTab === "assessment"
+                    leftTab === "protocols"
                       ? isLight ? "bg-blue-600 text-white shadow-xs" : "bg-cyan-600 text-white shadow-xs"
                       : isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <Shield size={11} className="inline mr-1" /> Threat Intel
+                  <ShieldAlert size={11} className="inline mr-1" /> Sentinels ({protocols.length})
                 </button>
                 <button
                   onClick={() => setLeftTab("cases")}
@@ -421,14 +460,14 @@ export default function TacticalMapHUD({
                   <ListFilter size={11} className="inline mr-1" /> Targets ({filteredCases.length})
                 </button>
                 <button
-                  onClick={() => setLeftTab("alerts")}
+                  onClick={() => setLeftTab("assessment")}
                   className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
-                    leftTab === "alerts"
-                      ? "bg-purple-600 text-white shadow-xs"
+                    leftTab === "assessment"
+                      ? isLight ? "bg-purple-600 text-white shadow-xs" : "bg-purple-600 text-white shadow-xs"
                       : isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  <BrainCircuit size={11} className="inline mr-1" /> Alerts
+                  <Shield size={11} className="inline mr-1" /> Intel
                 </button>
               </div>
 
@@ -445,8 +484,121 @@ export default function TacticalMapHUD({
 
             {/* Content Body */}
             <div className="p-4 overflow-y-auto space-y-3.5 text-xs">
-              {leftTab === "assessment" ? (
-                <>
+              {leftTab === "protocols" ? (
+                /* Sentinel Protocols Tab */
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                      Active Security Sentinel Rules
+                    </span>
+                    <button
+                      onClick={() => setShowProtocolModal(true)}
+                      className="flex items-center gap-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 px-2 py-1 text-[10px] font-extrabold text-white transition cursor-pointer shadow-xs"
+                    >
+                      <Plus size={11} />
+                      <span>New Sentinel</span>
+                    </button>
+                  </div>
+
+                  {protocols.map((p) => {
+                    const isBreached = p.status === "breached";
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => handleFocusProtocol(p)}
+                        className={`p-3 rounded-2xl border transition cursor-pointer backdrop-blur-xl ${
+                          isBreached
+                            ? "bg-red-950/40 border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                            : p.status === "paused"
+                            ? "bg-white/[0.02] border-white/5 opacity-60"
+                            : isLight
+                            ? "bg-white/40 border-slate-200/70 hover:bg-white/70 shadow-xs"
+                            : "bg-white/[0.03] border-white/10 hover:bg-white/[0.08] hover:border-cyan-400/40"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-2 w-2 rounded-full ${isBreached ? "bg-red-500 animate-ping" : p.status === "paused" ? "bg-slate-500" : "bg-cyan-400"}`} />
+                            <span className={`font-bold text-[12px] ${isLight ? "text-slate-900" : "text-white"}`}>{p.name}</span>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <span className={`rounded px-1.5 py-0.5 text-[9px] font-mono font-bold ${
+                              isBreached
+                                ? "bg-red-900 text-red-200"
+                                : p.status === "paused"
+                                ? "bg-slate-800 text-slate-400"
+                                : "bg-cyan-950 text-cyan-300"
+                            }`}>
+                              {isBreached ? "SURGE BREACH" : p.status.toUpperCase()}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleProtocol(p.id);
+                              }}
+                              className="rounded p-1 text-slate-400 hover:text-white"
+                              title={p.status === "paused" ? "Resume" : "Pause"}
+                            >
+                              {p.status === "paused" ? <Play size={11} /> : <Pause size={11} />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className={`text-[10px] mt-1 ${isLight ? "text-slate-600" : "text-slate-300"}`}>
+                          {p.description}
+                        </p>
+
+                        <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5 text-[10px]">
+                          <span className={isLight ? "text-slate-500" : "text-slate-400"}>
+                            Target: <strong className={isLight ? "text-slate-800" : "text-slate-200"}>{p.targetDistricts.join(", ")}</strong>
+                          </span>
+                          <span className="font-mono font-bold text-cyan-400">
+                            {p.currentValue} / {p.threshold} {p.metricType === "incident_count" ? "FIRs" : "Z"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : leftTab === "cases" ? (
+                /* Interactive Zone FIR Feed */
+                <div className="space-y-2 max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
+                  <div className={`flex items-center justify-between pb-1 text-[11px] ${isLight ? "text-slate-600" : "text-slate-400"}`}>
+                    <span>Click any case to inspect &amp; focus</span>
+                    <span className={`font-bold ${isLight ? "text-blue-700" : "text-cyan-400"}`}>{filteredCases.length} cases</span>
+                  </div>
+
+                  {filteredCases.slice(0, 15).map((c) => (
+                    <div
+                      key={c.caseId}
+                      onClick={() => handleFocusPin(c)}
+                      className={`p-2.5 rounded-xl border transition cursor-pointer backdrop-blur-xl ${
+                        selectedCase?.caseId === c.caseId
+                          ? isLight
+                            ? "bg-blue-100 border-blue-500 shadow-xs"
+                            : "bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                          : isLight
+                            ? "bg-white/40 border-slate-200/60 hover:bg-white/70"
+                            : "bg-white/[0.03] border-white/10 hover:bg-white/[0.08]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`font-bold text-[11px] truncate max-w-[170px] ${isLight ? "text-slate-900" : "text-white"}`}>{c.crime}</span>
+                        <span className={`font-mono text-[10px] font-semibold ${isLight ? "text-blue-700" : "text-cyan-300"}`}>{c.crimeNo ? c.crimeNo.slice(-6) : c.caseId}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
+                        <span className="truncate max-w-[140px]">{c.unitName || c.districtName}</span>
+                        <span className="text-amber-500 font-semibold">{c.statusName}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                /* Threat Intel & Analysis */
+                <div className="space-y-3">
                   <div className={`rounded-xl border p-3 backdrop-blur-xl ${
                     isLight
                       ? "border-red-300 bg-red-50/70 text-red-900 shadow-xs"
@@ -493,78 +645,6 @@ export default function TacticalMapHUD({
                       </div>
                     ))}
                   </div>
-
-                  {/* Actions */}
-                  <div className={`pt-2 border-t ${isLight ? "border-slate-200/60" : "border-white/10"}`}>
-                    <button
-                      onClick={() => router.push("/interventions")}
-                      className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 p-2.5 font-bold text-white text-xs flex items-center justify-center gap-1.5 transition shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer"
-                    >
-                      <Sparkles size={13} />
-                      <span>Deploy Field Interventions</span>
-                      <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </>
-              ) : leftTab === "cases" ? (
-                /* Interactive Zone FIR Feed */
-                <div className="space-y-2 max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
-                  <div className={`flex items-center justify-between pb-1 text-[11px] ${isLight ? "text-slate-600" : "text-slate-400"}`}>
-                    <span>Click any case to inspect &amp; focus</span>
-                    <span className={`font-bold ${isLight ? "text-blue-700" : "text-cyan-400"}`}>{filteredCases.length} cases</span>
-                  </div>
-
-                  {filteredCases.slice(0, 15).map((c) => (
-                    <div
-                      key={c.caseId}
-                      onClick={() => handleFocusPin(c)}
-                      className={`p-2.5 rounded-xl border transition cursor-pointer backdrop-blur-xl ${
-                        selectedCase?.caseId === c.caseId
-                          ? isLight
-                            ? "bg-blue-100 border-blue-500 shadow-xs"
-                            : "bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-                          : isLight
-                            ? "bg-white/40 border-slate-200/60 hover:bg-white/70"
-                            : "bg-white/[0.03] border-white/10 hover:bg-white/[0.08]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className={`font-bold text-[11px] truncate max-w-[170px] ${isLight ? "text-slate-900" : "text-white"}`}>{c.crime}</span>
-                        <span className={`font-mono text-[10px] font-semibold ${isLight ? "text-blue-700" : "text-cyan-300"}`}>{c.crimeNo ? c.crimeNo.slice(-6) : c.caseId}</span>
-                      </div>
-                      <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
-                        <span className="truncate max-w-[140px]">{c.unitName || c.districtName}</span>
-                        <span className="text-amber-500 font-semibold">{c.statusName}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Attention Queue Feed */
-                <div className="space-y-2.5">
-                  <div className={`rounded-xl border p-3 backdrop-blur-xl ${
-                    isLight ? "border-amber-300 bg-amber-50/70" : "border-amber-500/30 bg-amber-950/20"
-                  }`}>
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block uppercase">Cyber Fraud Alert</span>
-                    <p className={`font-bold mt-0.5 ${isLight ? "text-slate-900" : "text-slate-200"}`}>UPI Impersonation Spike in Mysuru</p>
-                    <span className={`text-[10px] mt-1 block ${isLight ? "text-slate-600" : "text-slate-400"}`}>Requires specialized cyber cell response</span>
-                  </div>
-
-                  <div className={`rounded-xl border p-3 backdrop-blur-xl ${
-                    isLight ? "border-blue-300 bg-blue-50/70" : "border-blue-500/30 bg-blue-950/20"
-                  }`}>
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 block uppercase">Chargesheet Filed</span>
-                    <p className={`font-bold mt-0.5 ${isLight ? "text-slate-900" : "text-slate-200"}`}>FIR #202600142 Trial Initiated</p>
-                    <span className={`text-[10px] mt-1 block ${isLight ? "text-slate-600" : "text-slate-400"}`}>Belagavi Sessions Court</span>
-                  </div>
-
-                  <div className={`rounded-xl border p-3 backdrop-blur-xl ${
-                    isLight ? "border-purple-300 bg-purple-50/70" : "border-purple-500/30 bg-purple-950/20"
-                  }`}>
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 block uppercase">IO Caseload Review</span>
-                    <p className={`font-bold mt-0.5 ${isLight ? "text-slate-900" : "text-slate-200"}`}>3 Officers with &gt;25 Active Cases</p>
-                    <span className={`text-[10px] mt-1 block ${isLight ? "text-slate-600" : "text-slate-400"}`}>Supervisory allocation recommended</span>
-                  </div>
                 </div>
               )}
             </div>
@@ -580,8 +660,8 @@ export default function TacticalMapHUD({
             }`}
             title="Open Threat Intel"
           >
-            <Shield size={16} />
-            <span className="mt-2 text-[9px] font-bold uppercase rotate-90 tracking-wider">INTEL</span>
+            <ShieldAlert size={16} />
+            <span className="mt-2 text-[9px] font-bold uppercase rotate-90 tracking-wider">RULES</span>
           </button>
         )}
       </div>
@@ -991,6 +1071,19 @@ export default function TacticalMapHUD({
           onOpenGraph={(cId) => {
             setModalCaseId(null);
             router.push(`/intelligence/network?caseId=${cId}`);
+          }}
+        />
+      )}
+
+      {/* Protocol Manager Custom Rule Modal */}
+      {showProtocolModal && (
+        <ProtocolManagerModal
+          onClose={() => setShowProtocolModal(false)}
+          onProtocolCreated={(newProt) => {
+            const updated = [newProt, ...protocols];
+            const evaluated = MLMonitoringService.evaluateProtocols(updated, liveCases);
+            setProtocols(evaluated);
+            handleFocusProtocol(newProt);
           }}
         />
       )}

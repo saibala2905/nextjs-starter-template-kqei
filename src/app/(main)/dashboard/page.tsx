@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Shield,
   BrainCircuit,
@@ -8,6 +9,8 @@ import {
   ChartColumnIncreasing,
   Crosshair,
   Maximize2,
+  ShieldAlert,
+  ArrowRight,
 } from "lucide-react";
 
 import HeroBanner from "@/components/dashboard/HeroBanner";
@@ -60,18 +63,19 @@ export default function DashboardPage() {
           return null;
         }),
         kspApi.getGeoCases({ limit: 250 }).catch((err) => {
-          console.error("Geo cases error:", err);
-          return [];
+          console.error("Geo points fetch error:", err);
+          return [] as GeoCasePoint[];
         }),
       ]);
 
       if (overviewData) {
         setOverview(overviewData);
-        setFilteredKPIs(overviewData.kpis);
       }
-      setGeoCases(geoData);
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
+      if (geoData && geoData.length > 0) {
+        setGeoCases(geoData);
+      }
+    } catch (error) {
+      console.error("Dashboard load failed:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,39 +86,59 @@ export default function DashboardPage() {
     loadData();
   }, [loadData]);
 
-  const handleFilterChange = async (filters: FilterState) => {
-    try {
-      setRefreshing(true);
-      const params: Record<string, string | number> = {};
-      if (filters.districtId !== "all") params.districtId = Number(filters.districtId);
-      if (filters.crimeMinorHeadId !== "all") params.crimeMinorHeadId = Number(filters.crimeMinorHeadId);
-      if (filters.from) params.from = filters.from;
-      if (filters.to) params.to = filters.to;
+  // Handle Global Filters change
+  const handleFilterChange = useCallback(
+    async (filters: FilterState) => {
+      try {
+        setRefreshing(true);
+        const kpiParams: {
+          from?: string;
+          to?: string;
+          districtId?: number;
+          unitId?: number;
+          crimeMinorHeadId?: number;
+          caseStatusId?: number;
+        } = {};
 
-      const [kpiRes, geoRes] = await Promise.all([
-        kspApi.getDashboardKPIs(params).catch(() => null),
-        kspApi.getGeoCases({ ...params, limit: 250 }).catch(() => []),
-      ]);
+        if (filters.from) kpiParams.from = filters.from;
+        if (filters.to) kpiParams.to = filters.to;
+        if (filters.districtId && filters.districtId !== "all") kpiParams.districtId = Number(filters.districtId);
+        if (filters.crimeMinorHeadId && filters.crimeMinorHeadId !== "all") kpiParams.crimeMinorHeadId = Number(filters.crimeMinorHeadId);
 
-      if (kpiRes) {
-        setFilteredKPIs({
-          totalCases: kpiRes.totalCases,
-          activeCases: kpiRes.activeCases,
-          chargeSheetedCases: kpiRes.chargeSheeted,
-          closedCases: kpiRes.closed,
-          pendingReviewCases: overview?.kpis?.pendingReviewCases || 36,
-          chargesheetRate: kpiRes.totalCases > 0 ? Math.round((kpiRes.chargeSheeted / kpiRes.totalCases) * 1000) / 10 : 0,
-        });
+        const [kpiRes, geoRes] = await Promise.all([
+          kspApi.getDashboardKPIs(kpiParams).catch(() => null),
+          kspApi
+            .getGeoCases({
+              districtId: filters.districtId && filters.districtId !== "all" ? Number(filters.districtId) : undefined,
+              crimeMinorHeadId: filters.crimeMinorHeadId && filters.crimeMinorHeadId !== "all" ? Number(filters.crimeMinorHeadId) : undefined,
+              limit: 250,
+            })
+            .catch(() => [] as GeoCasePoint[]),
+        ]);
+
+        if (kpiRes) {
+          setFilteredKPIs({
+            totalCases: kpiRes.totalCases,
+            activeCases: kpiRes.activeCases,
+            chargeSheetedCases: kpiRes.chargeSheeted,
+            closedCases: kpiRes.closed,
+            pendingReviewCases: Math.round(kpiRes.activeCases * 0.08),
+            chargesheetRate: Math.round((kpiRes.chargeSheeted / Math.max(1, kpiRes.totalCases)) * 100),
+          });
+        }
+        if (geoRes && geoRes.length > 0) {
+          setGeoCases(geoRes);
+        }
+      } catch (err) {
+        console.error("Filter update failed:", err);
+      } finally {
+        setRefreshing(false);
       }
-      setGeoCases(geoRes);
-    } catch (err) {
-      console.error("Filter change error:", err);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+    },
+    []
+  );
 
-  // If in Tactical HUD Mode, render the immersive game-style overlay map
+  // Full-Screen Tactical Map HUD Mode
   if (viewMode === "hud") {
     return (
       <TacticalMapHUD
@@ -126,13 +150,14 @@ export default function DashboardPage() {
     );
   }
 
+  // Standard Dashboard Grid View
   return (
     <div className="space-y-8 pb-10">
-      {/* Top HUD Mode Switcher Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-4 text-white shadow-md">
-        <div className="flex items-center gap-3">
+      {/* Top Action & Navigation Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-5 text-white shadow-md">
+        <div className="flex items-center gap-3.5">
           <div className="rounded-xl bg-blue-500/20 p-2.5 border border-blue-400/30">
-            <Crosshair size={20} className="text-blue-300 animate-pulse" />
+            <Crosshair size={22} className="text-blue-300 animate-pulse" />
           </div>
           <div>
             <h2 className="text-sm font-extrabold tracking-wide uppercase flex items-center gap-2">
@@ -147,13 +172,24 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => setViewMode("hud")}
-          className="flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 px-4 py-2 text-xs font-black text-slate-950 transition shadow-lg cursor-pointer shrink-0"
-        >
-          <Maximize2 size={14} />
-          <span>Launch Tactical HUD Mode</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/monitoring"
+            className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-bold text-white transition backdrop-blur-md cursor-pointer"
+          >
+            <ShieldAlert size={14} className="text-cyan-300" />
+            <span>Sentinel Protocols</span>
+            <ArrowRight size={13} />
+          </Link>
+
+          <button
+            onClick={() => setViewMode("hud")}
+            className="flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 px-4 py-2 text-xs font-black text-slate-950 transition shadow-lg cursor-pointer shrink-0"
+          >
+            <Maximize2 size={14} />
+            <span>Launch Tactical HUD Mode</span>
+          </button>
+        </div>
       </div>
 
       {/* Global Filter Bar */}
@@ -215,50 +251,38 @@ export default function DashboardPage() {
       </section>
 
       {/* ====================================================== */}
-      {/* 3. Geospatial Crime Intelligence */}
+      {/* 3. Geospatial Crime Intelligence & Sentinel Fences */}
       {/* ====================================================== */}
       <section>
         <SectionHeader
           icon={<MapPinned size={20} />}
-          title="Geospatial Crime Intelligence (GIS)"
-          description="Interactive statewide coordinates with crime classification color coding and FIR popups."
+          title="Geospatial Crime Intelligence & Sentinel Fences"
+          description="GIS spatial analysis, district clustering, and animated Sentinel perimeter boundaries."
           badges={[
-            { label: `${geoCases.length} Geocoded Cases`, color: "blue" },
-            { label: "38 Districts", color: "purple" },
-            { label: "Interactive GIS", color: "green" },
+            { label: "ArcGIS Dark Canvas", color: "blue" },
+            { label: "Perimeter Geo-Fences", color: "orange" },
+            { label: "Live Mapping", color: "green" },
           ]}
           open={sections.intelligence}
           onToggle={() => toggle("intelligence")}
         />
 
         {sections.intelligence && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-end">
-              <button
-                onClick={() => setViewMode("hud")}
-                className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition shadow-2xs cursor-pointer"
-              >
-                <Maximize2 size={13} />
-                <span>Open in Tactical HUD Fullscreen</span>
-              </button>
-            </div>
-            <CrimeMap cases={geoCases} loading={loading || refreshing} onRefresh={loadData} />
-          </div>
+          <CrimeMap cases={geoCases} loading={loading || refreshing} onRefresh={loadData} />
         )}
       </section>
 
       {/* ====================================================== */}
-      {/* 4. Crime Analytics */}
+      {/* 4. Historical Velocity & Crime Trends */}
       {/* ====================================================== */}
       <section>
         <SectionHeader
           icon={<ChartColumnIncreasing size={20} />}
-          title="Crime Velocity & Classification Analytics"
-          description="Monthly registration trends and subhead crime distributions from Catalyst ZCQL queries."
+          title="Crime Movement & Subhead Analytics"
+          description="Temporal velocity distributions and subhead classification composition."
           badges={[
-            { label: "May - July 2026", color: "purple" },
-            { label: "18 Crime Subheads", color: "blue" },
-            { label: "ZCQL Engine", color: "green" },
+            { label: "May - Jul 2026", color: "blue" },
+            { label: "18 Crime Subheads", color: "purple" },
           ]}
           open={sections.analytics}
           onToggle={() => toggle("analytics")}

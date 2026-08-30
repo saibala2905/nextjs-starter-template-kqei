@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Shield,
+  ShieldAlert,
   BrainCircuit,
   Network,
   Sparkles,
@@ -29,7 +30,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
   const [openIntelligence, setOpenIntelligence] = useState(false);
 
   useEffect(() => {
-    if (pathname.startsWith("/intelligence") || pathname.startsWith("/hotspots") || pathname.startsWith("/interventions")) {
+    if (pathname.startsWith("/intelligence") || pathname.startsWith("/hotspots") || pathname.startsWith("/interventions") || pathname.startsWith("/monitoring")) {
       setOpenIntelligence(true);
     }
   }, [pathname]);
@@ -40,6 +41,12 @@ export default function Sidebar({ collapsed }: SidebarProps) {
       href: "/dashboard",
       icon: LayoutDashboard,
       badge: "Live",
+    },
+    {
+      title: "Sentinel Protocols",
+      href: "/monitoring",
+      icon: ShieldAlert,
+      badge: "ML AI",
     },
     {
       title: "Crime Analytics",

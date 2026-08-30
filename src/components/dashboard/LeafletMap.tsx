@@ -12,9 +12,11 @@ import {
 } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import type { GeoCasePoint } from "@/types/apiTypes";
+import type { SentinelProtocol } from "@/services/mlMonitoringService";
 
 interface LeafletMapProps {
   cases?: GeoCasePoint[];
+  protocols?: SentinelProtocol[];
   onSelectCase?: (c: GeoCasePoint) => void;
   selectedCaseId?: number | null;
   flyToCenter?: [number, number] | null;
@@ -24,6 +26,37 @@ interface LeafletMapProps {
 }
 
 const KARNATAKA_CENTER: LatLngExpression = [15.3173, 75.7139];
+
+const DISTRICT_COORDS: Record<string, [number, number]> = {
+  "Bengaluru city": [12.9716, 77.5946],
+  "Bengaluru District": [13.0827, 77.5877],
+  "Bengaluru South": [12.8975, 77.5975],
+  "Mysuru District": [12.2958, 76.6394],
+  "Mysuru City": [12.3051, 76.6551],
+  "Belagavi Dist": [15.8497, 74.4977],
+  "Belagavi City": [15.8600, 74.5100],
+  "Dharwad": [15.4589, 75.0078],
+  "Hubballi Dharwad City": [15.3647, 75.1240],
+  "Mangalooru City": [12.9141, 74.8560],
+  "Dakshina Kannada": [12.8391, 75.0414],
+  "Kalaburagi": [17.3297, 76.8343],
+  "Kalaburagi City": [17.3400, 76.8400],
+  "Shivamogga": [13.9299, 75.5681],
+  "Tumakuru": [13.3409, 77.1010],
+  "Vijayapur": [16.8302, 75.7100],
+  "Ballari": [15.1394, 76.9214],
+  "Udupi": [13.3409, 74.7421],
+  "Uttara Kannada": [14.7924, 74.4348],
+  "Yadgir": [16.7644, 77.1378],
+  "Chitradurga": [14.2251, 76.3980],
+  "Hassan": [13.0033, 76.1004],
+  "Mandya": [12.5238, 76.8970],
+  "Raichur": [16.2076, 77.3463],
+  "Davanagere": [14.4644, 75.9218],
+  "Chikkamagaluru": [13.3161, 75.7720],
+  "Chickballapura": [13.4355, 77.7315],
+  "Bagalkot": [16.1850, 75.6960],
+};
 
 // Component to handle smooth flyTo panning
 function MapFlyController({
@@ -46,6 +79,7 @@ function MapFlyController({
 
 export default function LeafletMap({
   cases = [],
+  protocols = [],
   onSelectCase,
   selectedCaseId,
   flyToCenter,
@@ -154,6 +188,51 @@ export default function LeafletMap({
           </>
         )}
 
+        {/* Active Sentinel Protocol Geo-Fence Perimeters */}
+        {protocols.map((p) => {
+          if (p.status === "paused") return null;
+          const isBreached = p.status === "breached";
+          const color = isBreached ? "#ef4444" : p.severity === "elevated" ? "#f59e0b" : "#06b6d4";
+
+          return (
+            <div key={p.id}>
+              {p.targetDistricts.map((dName) => {
+                const coords = DISTRICT_COORDS[dName];
+                if (!coords) return null;
+
+                return (
+                  <Circle
+                    key={`${p.id}-${dName}`}
+                    center={coords}
+                    radius={isBreached ? 24000 : 18000}
+                    pathOptions={{
+                      color,
+                      fillColor: color,
+                      fillOpacity: isBreached ? 0.18 : 0.08,
+                      weight: isBreached ? 2.5 : 1.5,
+                      dashArray: isBreached ? "5, 5" : "8, 6",
+                    }}
+                  >
+                    <Tooltip direction="top" opacity={0.95}>
+                      <div className="text-xs p-1">
+                        <p className="font-black text-slate-900 flex items-center gap-1">
+                          <span>{p.name}</span>
+                          <span className={`px-1 rounded text-[9px] font-bold ${isBreached ? "bg-red-100 text-red-700" : "bg-cyan-100 text-cyan-800"}`}>
+                            {isBreached ? "BREACHED" : "SENTINEL ACTIVE"}
+                          </span>
+                        </p>
+                        <p className="text-slate-600 text-[10px] mt-0.5">
+                          Monitored Vector: <strong>{p.crimeHead}</strong> ({p.currentValue} / {p.threshold})
+                        </p>
+                      </div>
+                    </Tooltip>
+                  </Circle>
+                );
+              })}
+            </div>
+          );
+        })}
+
         {/* Hotspot Radar Density Rings */}
         {showHotspotRings && (
           <>
@@ -163,7 +242,7 @@ export default function LeafletMap({
               pathOptions={{
                 color: "#ef4444",
                 fillColor: "#ef4444",
-                fillOpacity: 0.12,
+                fillOpacity: 0.10,
                 weight: 1.5,
                 dashArray: "4, 6",
               }}
@@ -174,7 +253,7 @@ export default function LeafletMap({
               pathOptions={{
                 color: "#f59e0b",
                 fillColor: "#f59e0b",
-                fillOpacity: 0.12,
+                fillOpacity: 0.10,
                 weight: 1.5,
                 dashArray: "4, 6",
               }}
@@ -185,7 +264,7 @@ export default function LeafletMap({
               pathOptions={{
                 color: "#a855f7",
                 fillColor: "#a855f7",
-                fillOpacity: 0.12,
+                fillOpacity: 0.10,
                 weight: 1.5,
                 dashArray: "4, 6",
               }}

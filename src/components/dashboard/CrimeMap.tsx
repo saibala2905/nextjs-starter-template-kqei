@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import dynamic from "next/dynamic";
-import { MapPinned, RefreshCw } from "lucide-react";
+import { MapPinned, RefreshCw, ShieldAlert } from "lucide-react";
 import type { GeoCasePoint } from "@/types/apiTypes";
+import { MLMonitoringService } from "@/services/mlMonitoringService";
 
 const Map = dynamic(() => import("./LeafletMap"), {
   ssr: false,
@@ -23,6 +25,11 @@ interface CrimeMapProps {
 }
 
 export default function CrimeMap({ cases = [], loading = false, onRefresh }: CrimeMapProps) {
+  const evaluatedProtocols = useMemo(() => {
+    const stored = MLMonitoringService.getProtocols();
+    return MLMonitoringService.evaluateProtocols(stored, cases);
+  }, [cases]);
+
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
       <div className="flex flex-wrap items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -31,14 +38,19 @@ export default function CrimeMap({ cases = [], loading = false, onRefresh }: Cri
             <MapPinned className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Geospatial Crime Intelligence</h2>
+            <h2 className="text-lg font-bold text-slate-900">Geospatial Crime Intelligence &amp; Sentinel Fences</h2>
             <p className="text-xs text-slate-500">
-              Interactive statewide crime density mapping &amp; district-level FIR coordinates
+              Interactive statewide crime density mapping with live Sentinel Geo-Fence perimeters
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800 border border-cyan-200">
+            <ShieldAlert size={13} className="text-cyan-600" />
+            <span>{evaluatedProtocols.filter((p) => p.status !== "paused").length} Active Sentinels</span>
+          </div>
+
           <div className="flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -61,7 +73,7 @@ export default function CrimeMap({ cases = [], loading = false, onRefresh }: Cri
       </div>
 
       <div className="h-[520px] w-full">
-        <Map cases={cases} />
+        <Map cases={cases} protocols={evaluatedProtocols} />
       </div>
     </section>
   );
