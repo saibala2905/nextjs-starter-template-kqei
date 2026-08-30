@@ -55,7 +55,7 @@ export default function DashboardPage() {
           console.error("Dashboard overview error:", err);
           return null;
         }),
-        kspApi.getGeoCases({ limit: 400 }).catch((err) => {
+        kspApi.getGeoCases({ limit: 250 }).catch((err) => {
           console.error("Geo cases error:", err);
           return [];
         }),

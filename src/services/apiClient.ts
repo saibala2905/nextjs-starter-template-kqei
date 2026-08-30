@@ -1,28 +1,68 @@
 /**
- * Base API Client for Zoho Catalyst KSP Microservice
+ * Base API Client for Zoho Catalyst KSP Microservice & Data Store
  */
 
-const DEFAULT_BASE_URL = "https://ksp-60075494775.development.catalystserverless.in/server/ksp_aio_function";
+export const DEFAULT_DATASTORE_URL =
+  "https://ksp-60075494775.development.catalystserverless.in/server/ksp_aio_function";
+
+export const DEFAULT_AI_URL =
+  "https://ksp-60075494775.development.catalystserverless.in/server/ksp_aio_function";
+
+export const STORAGE_KEY_BASE_URL = "ksp_api_base_url";
+export const STORAGE_KEY_AI_URL = "ksp_ai_base_url";
+
+let currentBaseUrl: string | null = null;
 
 export function getBaseUrl(): string {
   if (typeof window !== "undefined") {
-    // Client-side: use env variable if available, else default to live Catalyst function
-    return process.env.NEXT_PUBLIC_API_URL || DEFAULT_BASE_URL;
+    if (currentBaseUrl) return currentBaseUrl;
+    const stored = localStorage.getItem(STORAGE_KEY_BASE_URL);
+    if (stored && stored.trim()) {
+      currentBaseUrl = stored.trim();
+      return currentBaseUrl;
+    }
+    return process.env.NEXT_PUBLIC_API_URL || DEFAULT_DATASTORE_URL;
   }
-  // Server-side
-  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_BASE_URL;
+  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_DATASTORE_URL;
+}
+
+export function setBaseUrl(url: string): void {
+  const cleanUrl = url.trim().replace(/\/$/, "");
+  currentBaseUrl = cleanUrl;
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY_BASE_URL, cleanUrl);
+  }
+}
+
+export function getAiUrl(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(STORAGE_KEY_AI_URL);
+    if (stored && stored.trim()) {
+      return stored.trim();
+    }
+    return process.env.NEXT_PUBLIC_AI_URL || DEFAULT_AI_URL;
+  }
+  return process.env.NEXT_PUBLIC_AI_URL || DEFAULT_AI_URL;
+}
+
+export function setAiUrl(url: string): void {
+  const cleanUrl = url.trim().replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY_AI_URL, cleanUrl);
+  }
 }
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
   timeoutMs?: number;
+  customBaseUrl?: string;
 }
 
 export async function apiClient<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { params, timeoutMs = 15000, ...fetchOptions } = options;
-  const baseUrl = getBaseUrl().replace(/\/$/, "");
+  const { params, timeoutMs = 15000, customBaseUrl, ...fetchOptions } = options;
+  const baseUrl = (customBaseUrl || getBaseUrl()).replace(/\/$/, "");
   const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  
+
   let url = `${baseUrl}${normalizedEndpoint}`;
 
   if (params) {

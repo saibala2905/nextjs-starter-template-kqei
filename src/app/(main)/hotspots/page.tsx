@@ -66,7 +66,7 @@ export default function HotspotsPage() {
       setLoading(true);
       try {
         const [casesData, districtData] = await Promise.all([
-          kspApi.getGeoCases({ limit: 500 }).catch(() => []),
+          kspApi.getGeoCases({ limit: 300 }).catch(() => []),
           kspApi.getGeoDistricts().catch(() => []),
         ]);
         setGeoCases(casesData);

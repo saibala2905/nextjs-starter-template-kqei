@@ -1,5 +1,6 @@
 import { navigationTool } from "../tools/navigationTool";
 import { kspApi } from "@/services/kspApi";
+import { getAiUrl } from "@/services/apiClient";
 
 export interface AssistantContext {
   navigate: (path: string) => void;
@@ -13,9 +14,6 @@ export interface AssistantResult {
   handled: boolean;
   message: string;
 }
-
-const BACKEND_URL =
-  "https://ksp-60075494775.development.catalystserverless.in/server/ksp_aio_function/";
 
 export async function runAssistant(
   prompt: string,
@@ -122,7 +120,8 @@ export async function runAssistant(
   // 5. Catalyst QuickML Backend
   // ==========================================
   try {
-    const response = await fetch(BACKEND_URL, {
+    const aiBase = getAiUrl().replace(/\/$/, "");
+    const response = await fetch(`${aiBase}/api/ai/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

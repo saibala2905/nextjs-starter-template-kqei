@@ -150,7 +150,13 @@ export const kspApi = {
   // ==========================================
   // 6. System Health
   // ==========================================
-  getHealth: () => {
-    return apiClient<{ status: string; timestamp: string }>("/api/health");
+  getHealth: (customBaseUrl?: string) => {
+    return apiClient<{
+      status: string;
+      timestamp: string;
+      function?: string;
+      service?: string;
+      database?: string;
+    }>("/api/health", { customBaseUrl });
   },
 };
